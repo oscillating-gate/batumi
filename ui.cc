@@ -54,13 +54,22 @@ void Ui::Init(Adc *adc) {
 
   if (!storage.ParsimoniousLoad(&feat_mode_, SETTINGS_SIZE, &version_token_)) {
     feat_mode_ = FEAT_MODE_FREE;
+#ifdef ZOOM_IS_ATTEN
+    for (int i=0; i<4; i++)
+      pot_atten_value_[i] = 1 << 15;
+#else
     for (int i=0; i<4; i++)
       pot_fine_value_[i] = 1 << 15;
+#endif
   }
 
   // synchronize pots at startup
   for (uint8_t i=0; i<4; i++) {
+#ifdef POT_REVERSED
+    uint16_t adc_value = 0xffff - adc_->pot(i);
+#else
     uint16_t adc_value = adc_->pot(i);
+#endif
     pot_value_[i] = pot_filtered_value_[i] = pot_coarse_value_[i] = adc_value;
     catchup_state_[i] = false;
   }
@@ -192,8 +201,13 @@ void Ui::OnSwitchReleased(const Event& e) {
       case UI_MODE_NORMAL:
 	feat_mode_ = static_cast<FeatureMode>((feat_mode_ + 1) % FEAT_MODE_LAST);
 	// reset pots fine value
+#ifdef ZOOM_IS_ATTEN
+	for (int i=0; i<4; i++)
+	  pot_atten_value_[i] = 1 << 15;
+#else
 	for (int i=0; i<4; i++)
 	  pot_fine_value_[i] = 1 << 15;
+#endif
 	storage.ParsimoniousSave(&feat_mode_, SETTINGS_SIZE, &version_token_);
 	break;
       }
@@ -207,7 +221,11 @@ void Ui::OnPotChanged(const Event& e) {
   case UI_MODE_SPLASH:
     break;
   case UI_MODE_ZOOM:
+#ifdef ZOOM_IS_ATTEN
+    pot_atten_value_[e.control_id] = e.data;
+#else
     pot_fine_value_[e.control_id] = e.data;
+#endif
     break;
   case UI_MODE_NORMAL:
     if (!catchup_state_[e.control_id]) {

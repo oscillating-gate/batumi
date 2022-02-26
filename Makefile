@@ -50,6 +50,8 @@ ORIGINAL_BIN  = $(RESOURCES)/original_firmware.bin
 
 include stmlib/makefile.inc
 
+CCFLAGS := $(CCFLAGS) -DPOT_REVERSED -DZOOM_IS_ATTEN
+
 flasher: bin
 	cd flasher; pyinstaller -y "XAOC Firmware Update Tool.spec"
 

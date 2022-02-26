@@ -100,9 +100,14 @@ void Processor::SetFrequency(int8_t lfo_no) {
     last_reset_[lfo_no]++;
   }
 
+#ifdef ZOOM_IS_ATTEN
+  int16_t cv = (filtered_cv_[lfo_no] * ui_->atten(lfo_no)) >> 16;
+  int16_t pitch = AdcValuesToPitch(ui_->coarse(lfo_no), 0, cv);
+#else
   int16_t pitch = AdcValuesToPitch(ui_->coarse(lfo_no),
 				   ui_->fine(lfo_no),
 				   filtered_cv_[lfo_no]);
+#endif
 
   // set pitch
   if (!synced_[lfo_no] ||
@@ -174,9 +179,14 @@ void Processor::Process() {
 
     for (int i=1; i<kNumChannels; i++) {
       lfo_[i].link_to(&lfo_[0]);
+#ifdef ZOOM_IS_ATTEN
+      int16_t cv = (filtered_cv_[i] * ui_->atten(i)) >> 16;
+      lfo_[i].set_level(AdcValuesToLevel(ui_->coarse(i), 0, cv));
+#else
       lfo_[i].set_level(AdcValuesToLevel(ui_->coarse(i),
 					 ui_->fine(i),
 					 filtered_cv_[i]));
+#endif
       lfo_[i].set_initial_phase((kNumChannels - i) * (UINT16_MAX >> 2));
     }
   }
@@ -196,9 +206,14 @@ void Processor::Process() {
     }
     for (int i=1; i<kNumChannels; i++) {
       lfo_[i].link_to(&lfo_[0]);
+#ifdef ZOOM_IS_ATTEN
+      int16_t cv = (filtered_cv_[i] * ui_->atten(i)) >> 16;
+      lfo_[i].set_initial_phase(AdcValuesToPhase(ui_->coarse(i), 0, cv));
+#else
       lfo_[i].set_initial_phase(AdcValuesToPhase(ui_->coarse(i),
 						 ui_->fine(i),
 						 filtered_cv_[i]));
+#endif
     }
   }
   break;
@@ -217,9 +232,14 @@ void Processor::Process() {
     }
     for (int i=1; i<kNumChannels; i++) {
       lfo_[i].link_to(&lfo_[0]);
+#ifdef ZOOM_IS_ATTEN
+      int16_t cv = (filtered_cv_[i] * ui_->atten(i)) >> 16;
+      lfo_[i].set_divider(AdcValuesToDivider(ui_->coarse(i), 0, cv));
+#else
       lfo_[i].set_divider(AdcValuesToDivider(ui_->coarse(i),
       					     ui_->fine(i),
       					     filtered_cv_[i]));
+#endif
       // when 1st channel resets, all other channels reset
       if (!ui_->sync_mode() && reset_triggered_[0]) {
 	lfo_[i].Reset(reset_subsample_[0]);
