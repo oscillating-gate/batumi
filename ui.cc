@@ -56,7 +56,7 @@ void Ui::Init(Adc *adc) {
     feat_mode_ = FEAT_MODE_FREE;
 #ifdef ZOOM_IS_ATTEN
     for (int i=0; i<4; i++)
-      pot_atten_value_[i] = 1 << 15;
+      pot_atten_value_[i] = UINT16_MAX;
 #else
     for (int i=0; i<4; i++)
       pot_fine_value_[i] = 1 << 15;
@@ -117,17 +117,20 @@ void Ui::Poll() {
 
   // filter the pot values and emit events when changed
   for (uint8_t i = 0; i < 4; ++i) {
+#ifdef POT_REVERSED
+    uint16_t adc_value = 0xffff - adc_->pot(i);
+#else
     uint16_t adc_value = adc_->pot(i);
+#endif
     int32_t value = (31 * pot_filtered_value_[i] + adc_value) >> 5;
     pot_filtered_value_[i] = value;
     int32_t current_value = static_cast<int32_t>(pot_value_[i]);
-    if (value >= current_value + kPotMoveThreshold ||
-	value <= current_value - kPotMoveThreshold) {
+    if (value >= current_value + kPotMoveThreshold || value <= current_value - kPotMoveThreshold) {
       queue_.AddEvent(CONTROL_POT, i, value);
       pot_value_[i] = value;
     }
   }
-  
+
   // paint the interface
   switch (mode_) {
   case UI_MODE_SPLASH:
@@ -180,36 +183,32 @@ void Ui::OnSwitchReleased(const Event& e) {
   case SWITCH_SELECT:
     if (e.data > kVeryLongPressDuration) {
     } else if (e.data > kLongPressDuration) {
-      if (mode_ == UI_MODE_NORMAL)
-	mode_ = UI_MODE_ZOOM;
-      else if (mode_ == UI_MODE_ZOOM)
-	mode_ = UI_MODE_NORMAL;
+#ifdef LONG_PRESS_TO_CHANGE_MODE
+      ChangeFeatureMode();
+#else
+      ToggleZoomMode();
+#endif
     } else {
       switch (mode_) {
       case UI_MODE_SPLASH:
-	break;
+        break;
       case UI_MODE_ZOOM:
-	// detect if pots have moved during zoom
-	for (int i=0; i<4; i++)
-	  if (abs(pot_value_[i] - pot_coarse_value_[i]) > kCatchupThreshold) {
-	    catchup_state_[i] = true;
-	  }
-	mode_ = UI_MODE_NORMAL;
-	storage.ParsimoniousSave(&feat_mode_, SETTINGS_SIZE, &version_token_);
-	break;
+        // detect if pots have moved during zoom
+        for (int i = 0; i < 4; i++)
+          if (abs(pot_value_[i] - pot_coarse_value_[i]) > kCatchupThreshold) {
+            catchup_state_[i] = true;
+          }
+        mode_ = UI_MODE_NORMAL;
+        storage.ParsimoniousSave(&feat_mode_, SETTINGS_SIZE, &version_token_);
+        break;
 
       case UI_MODE_NORMAL:
-	feat_mode_ = static_cast<FeatureMode>((feat_mode_ + 1) % FEAT_MODE_LAST);
-	// reset pots fine value
-#ifdef ZOOM_IS_ATTEN
-	for (int i=0; i<4; i++)
-	  pot_atten_value_[i] = 1 << 15;
+#ifdef LONG_PRESS_TO_CHANGE_MODE
+        ToggleZoomMode();
 #else
-	for (int i=0; i<4; i++)
-	  pot_fine_value_[i] = 1 << 15;
+        ChangeFeatureMode();
 #endif
-	storage.ParsimoniousSave(&feat_mode_, SETTINGS_SIZE, &version_token_);
-	break;
+        break;
       }
     }
     break;
@@ -236,6 +235,28 @@ void Ui::OnPotChanged(const Event& e) {
     }
     break;
   }
+}
+
+void Ui::ToggleZoomMode()
+{
+  if (mode_ == UI_MODE_NORMAL)
+    mode_ = UI_MODE_ZOOM;
+  else if (mode_ == UI_MODE_ZOOM)
+    mode_ = UI_MODE_NORMAL;
+}
+
+void Ui::ChangeFeatureMode()
+{
+  feat_mode_ = static_cast<FeatureMode>((feat_mode_ + 1) % FEAT_MODE_LAST);
+  // reset pots fine value
+#ifdef ZOOM_IS_ATTEN
+  for (int i = 0; i < 4; i++)
+    pot_atten_value_[i] = UINT16_MAX;
+#else
+  for (int i = 0; i < 4; i++)
+    pot_fine_value_[i] = 1 << 15;
+#endif
+  storage.ParsimoniousSave(&feat_mode_, SETTINGS_SIZE, &version_token_);
 }
 
 void Ui::DoEvents() {

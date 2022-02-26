@@ -70,7 +70,7 @@ class Ui {
   }
 
 #ifdef ZOOM_IS_ATTEN
-  int16_t atten(uint8_t channel) {
+  uint16_t atten(uint8_t channel) {
     return pot_atten_value_[channel];
   }
 #else
@@ -92,6 +92,9 @@ class Ui {
   void OnSwitchPressed(const stmlib::Event& e);
   void OnSwitchReleased(const stmlib::Event& e);
   void OnPotChanged(const stmlib::Event& e);
+
+  void ToggleZoomMode();
+  void ChangeFeatureMode();
 
   uint16_t pot_value_[4];
   uint16_t pot_filtered_value_[4];
