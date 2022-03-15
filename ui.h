@@ -55,6 +55,26 @@ enum UiMode {
   UI_MODE_ZOOM,
 };
 
+struct Settings {
+  FeatureMode feat_mode_;
+  uint8_t padding[3];
+#ifdef ZOOM_IS_LEVELATTEN
+  uint16_t pot_levelatten_value_[4];
+#else
+  uint16_t pot_fine_value_[4];
+#endif
+
+  enum SettingsSize {
+    SETTINGS_SIZE = sizeof(feat_mode_) +
+#ifdef ZOOM_IS_LEVELATTEN
+    sizeof(pot_levelatten_value_) +
+#else
+    sizeof(pot_fine_value_) +
+#endif
+    sizeof(padding)
+  };
+};
+
 class Ui {
  public:
   Ui() { }
@@ -70,16 +90,14 @@ class Ui {
   }
 
 #ifdef ZOOM_IS_LEVELATTEN
-  uint16_t levelatten(uint8_t channel) {
-    return pot_levelatten_value_[channel];
-  }
+  uint16_t levelatten(uint8_t channel);
 #else
   int16_t fine(uint8_t channel) {
     return pot_fine_value_[channel] - 32768;
   }
 #endif
 
-  inline FeatureMode feat_mode() const { return feat_mode_; }
+  FeatureMode feat_mode() const;
   inline UiMode mode() const { return mode_; }
   inline uint8_t shape() const {
     return (switches_.pressed(2) << 1) | switches_.pressed(1);
@@ -111,24 +129,6 @@ class Ui {
   Switches switches_;
   Adc *adc_;
   UiMode mode_;
-
-  FeatureMode feat_mode_;
-  uint8_t padding[3];
-#ifdef ZOOM_IS_LEVELATTEN
-  uint16_t pot_levelatten_value_[4];
-#else
-  uint16_t pot_fine_value_[4];
-#endif
-
-  enum SettingsSize {
-    SETTINGS_SIZE = sizeof(feat_mode_) +
-#ifdef ZOOM_IS_LEVELATTEN
-    sizeof(pot_levelatten_value_) +
-#else
-    sizeof(pot_fine_value_) +
-#endif
-    sizeof(padding)
-  };
 
   uint16_t version_token_;
 

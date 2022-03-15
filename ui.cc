@@ -48,6 +48,8 @@ const uint16_t kCatchupThreshold = 1 << 10;
 
 stmlib::Storage<0x8020000, 4> storage;
 
+static Settings settings;
+
 void Ui::Init(Adc *adc) {
   mode_ = UI_MODE_SPLASH;
   adc_ = adc;
@@ -55,11 +57,11 @@ void Ui::Init(Adc *adc) {
   switches_.Init(adc_);
   animation_counter_ = 0;
 
-  if (!storage.ParsimoniousLoad(&feat_mode_, SETTINGS_SIZE, &version_token_)) {
-    feat_mode_ = FEAT_MODE_FREE;
+  if (!storage.ParsimoniousLoad(&settings, Settings::SETTINGS_SIZE, &version_token_)) {
+    settings.feat_mode_ = FEAT_MODE_FREE;
 #ifdef ZOOM_IS_LEVELATTEN
     for (int i=0; i<4; i++)
-      pot_levelatten_value_[i] = UINT16_MAX;
+      settings.pot_levelatten_value_[i] = UINT16_MAX;
 #else
     for (int i=0; i<4; i++)
       pot_fine_value_[i] = 1 << 15;
@@ -161,7 +163,7 @@ void Ui::Poll() {
     animation_counter_++;
     for (uint8_t i=0; i<kNumLeds; i++)
       leds_.set(i, false);
-    leds_.set(feat_mode_, animation_counter_ & 128);
+    leds_.set(settings.feat_mode_, animation_counter_ & 128);
     break;
 
   case UI_MODE_NORMAL:
@@ -171,9 +173,9 @@ void Ui::Poll() {
       (animation_counter_ & 16);
     for (uint8_t i=0; i<kNumLeds; i++) {
       if (catchup_state_[i])
-	leds_.set(i, i==feat_mode_ ? !flash : flash);
+	leds_.set(i, i==settings.feat_mode_ ? !flash : flash);
       else
-	leds_.set(i, i == feat_mode_);
+	leds_.set(i, i == settings.feat_mode_);
     }
     break;
   }
@@ -183,6 +185,17 @@ void Ui::Poll() {
 
 void Ui::FlushEvents() {
   queue_.Flush();
+}
+
+#ifdef ZOOM_IS_LEVELATTEN
+uint16_t Ui::levelatten(uint8_t channel) {
+  return settings.pot_levelatten_value_[channel];
+}
+#endif
+
+FeatureMode Ui::feat_mode() const
+{
+  return settings.feat_mode_;
 }
 
 void Ui::OnSwitchPressed(const Event& e) {
@@ -213,7 +226,7 @@ void Ui::OnSwitchReleased(const Event& e) {
             catchup_state_[i] = true;
           }
         mode_ = UI_MODE_NORMAL;
-        storage.ParsimoniousSave(&feat_mode_, SETTINGS_SIZE, &version_token_);
+        storage.ParsimoniousSave(&settings, Settings::SETTINGS_SIZE, &version_token_);
         break;
 
       case UI_MODE_NORMAL:
@@ -235,7 +248,7 @@ void Ui::OnPotChanged(const Event& e) {
     break;
   case UI_MODE_ZOOM:
 #ifdef ZOOM_IS_LEVELATTEN
-    pot_levelatten_value_[e.control_id] = e.data;
+    settings.pot_levelatten_value_[e.control_id] = e.data;
 #else
     pot_fine_value_[e.control_id] = e.data;
 #endif
@@ -261,16 +274,18 @@ void Ui::ToggleZoomMode()
 
 void Ui::ChangeFeatureMode()
 {
-  feat_mode_ = static_cast<FeatureMode>((feat_mode_ + 1) % FEAT_MODE_LAST);
+  settings.feat_mode_ = static_cast<FeatureMode>((settings.feat_mode_ + 1) % FEAT_MODE_LAST);
   // reset pots fine value
 #ifdef ZOOM_IS_LEVELATTEN
+# ifndef DISABLE_ZOOM_VALUE_RESET
   for (int i = 0; i < 4; i++)
-    pot_levelatten_value_[i] = UINT16_MAX;
+    settings.pot_levelatten_value_[i] = UINT16_MAX;
+# endif
 #else
   for (int i = 0; i < 4; i++)
     pot_fine_value_[i] = 1 << 15;
 #endif
-  storage.ParsimoniousSave(&feat_mode_, SETTINGS_SIZE, &version_token_);
+  storage.ParsimoniousSave(&settings, Settings::SETTINGS_SIZE, &version_token_);
 }
 
 void Ui::DoEvents() {
