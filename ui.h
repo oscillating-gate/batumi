@@ -69,9 +69,9 @@ class Ui {
     return pot_coarse_value_[channel];
   }
 
-#ifdef ZOOM_IS_ATTEN
-  uint16_t atten(uint8_t channel) {
-    return pot_atten_value_[channel];
+#ifdef ZOOM_IS_LEVELATTEN
+  uint16_t levelatten(uint8_t channel) {
+    return pot_levelatten_value_[channel];
   }
 #else
   int16_t fine(uint8_t channel) {
@@ -114,16 +114,16 @@ class Ui {
 
   FeatureMode feat_mode_;
   uint8_t padding[3];
-#ifdef ZOOM_IS_ATTEN
-  uint16_t pot_atten_value_[4];
+#ifdef ZOOM_IS_LEVELATTEN
+  uint16_t pot_levelatten_value_[4];
 #else
   uint16_t pot_fine_value_[4];
 #endif
 
   enum SettingsSize {
     SETTINGS_SIZE = sizeof(feat_mode_) +
-#ifdef ZOOM_IS_ATTEN
-    sizeof(pot_atten_value_) +
+#ifdef ZOOM_IS_LEVELATTEN
+    sizeof(pot_levelatten_value_) +
 #else
     sizeof(pot_fine_value_) +
 #endif

@@ -41,7 +41,7 @@ using namespace stmlib;
 const int32_t kLongPressDuration = 500;
 const int32_t kVeryLongPressDuration = 2000;
 const int32_t kPotMoveThreshold = 1 << (16 - 10);  // 10 bits
-#ifdef ZOOM_IS_ATTEN
+#ifdef ZOOM_IS_LEVELATTEN
 const int32_t kPotMoveThresholdInZoom = 1 << (16 - 9);  // 9 bits
 #endif
 const uint16_t kCatchupThreshold = 1 << 10;
@@ -57,9 +57,9 @@ void Ui::Init(Adc *adc) {
 
   if (!storage.ParsimoniousLoad(&feat_mode_, SETTINGS_SIZE, &version_token_)) {
     feat_mode_ = FEAT_MODE_FREE;
-#ifdef ZOOM_IS_ATTEN
+#ifdef ZOOM_IS_LEVELATTEN
     for (int i=0; i<4; i++)
-      pot_atten_value_[i] = UINT16_MAX;
+      pot_levelatten_value_[i] = UINT16_MAX;
 #else
     for (int i=0; i<4; i++)
       pot_fine_value_[i] = 1 << 15;
@@ -128,7 +128,7 @@ void Ui::Poll() {
     int32_t value = (31 * pot_filtered_value_[i] + adc_value) >> 5;
     pot_filtered_value_[i] = value;
     int32_t current_value = static_cast<int32_t>(pot_value_[i]);
-#ifdef ZOOM_IS_ATTEN
+#ifdef ZOOM_IS_LEVELATTEN
     int32_t threshold = kPotMoveThreshold;
 	if (mode_ == UI_MODE_ZOOM) {
 		threshold = kPotMoveThresholdInZoom;
@@ -234,8 +234,8 @@ void Ui::OnPotChanged(const Event& e) {
   case UI_MODE_SPLASH:
     break;
   case UI_MODE_ZOOM:
-#ifdef ZOOM_IS_ATTEN
-    pot_atten_value_[e.control_id] = e.data;
+#ifdef ZOOM_IS_LEVELATTEN
+    pot_levelatten_value_[e.control_id] = e.data;
 #else
     pot_fine_value_[e.control_id] = e.data;
 #endif
@@ -263,9 +263,9 @@ void Ui::ChangeFeatureMode()
 {
   feat_mode_ = static_cast<FeatureMode>((feat_mode_ + 1) % FEAT_MODE_LAST);
   // reset pots fine value
-#ifdef ZOOM_IS_ATTEN
+#ifdef ZOOM_IS_LEVELATTEN
   for (int i = 0; i < 4; i++)
-    pot_atten_value_[i] = UINT16_MAX;
+    pot_levelatten_value_[i] = UINT16_MAX;
 #else
   for (int i = 0; i < 4; i++)
     pot_fine_value_[i] = 1 << 15;
